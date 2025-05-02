@@ -1,0 +1,14 @@
+services:
+  postgres-main:
+    image: postgres:15
+    container_name: postgres-main
+    environment:
+      POSTGRES_USER: postgresadmin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: postgresdb
+      PGDATA: /data
+    volumes:
+      - ./postgres/pgdata:/var/lib/postgresql/data 
+    ports:
+      - "5000:5432"
+    restart: always
