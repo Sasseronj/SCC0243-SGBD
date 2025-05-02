@@ -41,9 +41,6 @@ def generate_meets(schema_name, engine):
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
     df_meets = pd.read_parquet('./data/meetings/meetings.parquet')
-    new_row = {col: None for col in df_meets.columns}
-    new_row['meeting_key'] = 1221
-    df_meets.loc[len(df_meets)] = new_row
     insert_data_to_db(df_meets, "meetings", schema_name, engine)
 
 def generate_sessions(schema_name, engine):
@@ -80,6 +77,7 @@ def generate_laps(schema_name, engine):
     """
     df_laps = pd.read_parquet('./data/laps/laps.parquet')
     df_laps = df_laps.drop(columns=['meeting_key'])
+    df_laps = df_laps[~df_laps["driver_number"].isin([31])]
     df_laps["nk_driver"] = df_laps.apply(create_nk_driver, axis=1)
 
     for col in ["segments_sector_1", "segments_sector_2", "segments_sector_3"]:
