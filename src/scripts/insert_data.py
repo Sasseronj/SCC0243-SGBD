@@ -65,9 +65,7 @@ def generate_laps(schema_name, engine):
     df_laps = pd.read_parquet("./data/laps/laps.parquet")
     df_laps = df_laps.drop(columns=["meeting_key"])
     df_laps = df_laps[~df_laps["driver_number"].isin([31])]
-
-    for col in ["segments_sector_1", "segments_sector_2", "segments_sector_3"]:
-        df_laps[col] = df_laps[col].apply(list)
+    df_laps = df_laps.drop(columns=["segments_sector_1", "segments_sector_2", "segments_sector_3"])
 
     insert_data_to_db(df_laps, "laps", schema_name, engine)
 
