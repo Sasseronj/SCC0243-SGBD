@@ -20,18 +20,6 @@ def insert_data_to_db(df, table_name, schema_name, engine, show=True):
     if show:
         print(f"{table_name} data inserted successfully.")
 
-def create_nk_driver(row):
-    """
-    Generates a unique key for a driver using driver number and session key.
-
-    Args:
-        row (pd.Series): A row from a DataFrame.
-
-    Returns:
-        str: A unique driver identifier (nk_driver).
-    """
-    return f"{row['driver_number']}_{row['session_key']}"
-
 def generate_meets(schema_name, engine):
     """
     Loads the meetings dataset, appends a dummy row, and inserts it into the database.
@@ -40,7 +28,7 @@ def generate_meets(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_meets = pd.read_parquet('./data/meetings/meetings.parquet')
+    df_meets = pd.read_parquet("./data/meetings/meetings.parquet")
     insert_data_to_db(df_meets, "meetings", schema_name, engine)
 
 def generate_sessions(schema_name, engine):
@@ -51,34 +39,32 @@ def generate_sessions(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_sessions = pd.read_parquet('./data/sessions/sessions.parquet')
+    df_sessions = pd.read_parquet("./data/sessions/sessions.parquet")
     insert_data_to_db(df_sessions, "sessions", schema_name, engine)
 
 def generate_drivers(schema_name, engine):
     """
-    Loads drivers data, creates nk_driver, and inserts into the database.
+    Loads drivers data and inserts into the database.
 
     Args:
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_drivers = pd.read_parquet('./data/drivers/drivers.parquet')
-    df_drivers = df_drivers.drop(columns=['meeting_key'])
-    df_drivers["nk_driver"] = df_drivers.apply(create_nk_driver, axis=1)
+    df_drivers = pd.read_parquet("./data/drivers/drivers.parquet")
+    df_drivers = df_drivers.drop(columns=["meeting_key"])
     insert_data_to_db(df_drivers, "drivers", schema_name, engine)
 
 def generate_laps(schema_name, engine):
     """
-    Loads laps data, creates nk_driver, processes segments, and inserts into the database.
+    Loads laps data, processes segments, and inserts into the database.
 
     Args:
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_laps = pd.read_parquet('./data/laps/laps.parquet')
-    df_laps = df_laps.drop(columns=['meeting_key'])
+    df_laps = pd.read_parquet("./data/laps/laps.parquet")
+    df_laps = df_laps.drop(columns=["meeting_key"])
     df_laps = df_laps[~df_laps["driver_number"].isin([31])]
-    df_laps["nk_driver"] = df_laps.apply(create_nk_driver, axis=1)
 
     for col in ["segments_sector_1", "segments_sector_2", "segments_sector_3"]:
         df_laps[col] = df_laps[col].apply(list)
@@ -87,29 +73,27 @@ def generate_laps(schema_name, engine):
 
 def generate_pits(schema_name, engine):
     """
-    Loads pit stop data, creates nk_driver, and inserts into the database.
+    Loads pit stop data and inserts into the database.
 
     Args:
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_pits = pd.read_parquet('./data/pits/pits.parquet')
-    df_pits = df_pits.drop(columns=['meeting_key'])
-    df_pits["nk_driver"] = df_pits.apply(create_nk_driver, axis=1)
+    df_pits = pd.read_parquet("./data/pits/pits.parquet")
+    df_pits = df_pits.drop(columns=["meeting_key"])
     insert_data_to_db(df_pits, "pits", schema_name, engine)
 
 def generate_positions(schema_name, engine):
     """
-    Loads position data, creates nk_driver, removes duplicates, and inserts into the database.
+    Loads position data, removes duplicates, and inserts into the database.
 
     Args:
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_positions = pd.read_parquet('./data/positions/positions.parquet')
-    df_positions = df_positions.drop(columns=['meeting_key'])
-    df_positions["nk_driver"] = df_positions.apply(create_nk_driver, axis=1)
-    df_positions = df_positions.drop_duplicates(subset=['nk_driver', 'date'])
+    df_positions = pd.read_parquet("./data/positions/positions.parquet")
+    df_positions = df_positions.drop(columns=["meeting_key"])
+    df_positions = df_positions.drop_duplicates(subset=["session_key", "driver_number", "date"])
     insert_data_to_db(df_positions, "positions", schema_name, engine)
 
 def generate_weather(schema_name, engine):
@@ -120,9 +104,9 @@ def generate_weather(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_weather = pd.read_parquet('./data/weather_conditions/weather_conditions.parquet')
-    df_weather = df_weather.drop(columns=['meeting_key'])
-    df_weather = df_weather.drop_duplicates(subset=['session_key', 'date'])
+    df_weather = pd.read_parquet("./data/weather_conditions/weather_conditions.parquet")
+    df_weather = df_weather.drop(columns=["meeting_key"])
+    df_weather = df_weather.drop_duplicates(subset=["session_key", "date"])
     insert_data_to_db(df_weather, "weather", schema_name, engine)
 
 def process_telemetry(file_path, schema_name):
@@ -139,11 +123,10 @@ def process_telemetry(file_path, schema_name):
         print(f"Processing file: {file_path}")
         df_telemetry = pd.read_parquet(file_path)
 
-        if 'meeting_key' in df_telemetry.columns:
-            df_telemetry = df_telemetry.drop(columns=['meeting_key'])
+        if "meeting_key" in df_telemetry.columns:
+            df_telemetry = df_telemetry.drop(columns=["meeting_key"])
 
-        df_telemetry["nk_driver"] = df_telemetry.apply(create_nk_driver, axis=1)
-        df_telemetry = df_telemetry.drop_duplicates(subset=['nk_driver', 'date'])
+        df_telemetry = df_telemetry.drop_duplicates(subset=["session_key", "driver_number", "date"])
 
         insert_data_to_db(df_telemetry, "telemetrys", schema_name, engine, show=False)
 
@@ -157,11 +140,11 @@ def generate_telemetrys(schema_name):
     Args:
         schema_name (str): Database schema name.
     """
-    path_telemetrys = './data/telemetrys'
+    path_telemetrys = "./data/telemetrys"
     if not os.path.isdir(path_telemetrys):
         raise FileNotFoundError(f"Directory does not exist: {path_telemetrys}")
 
-    files = [f for f in os.listdir(path_telemetrys) if f.endswith('.parquet')]
+    files = [f for f in os.listdir(path_telemetrys) if f.endswith(".parquet")]
 
     Parallel(n_jobs=-1)(
         delayed(process_telemetry)(os.path.join(path_telemetrys, file), schema_name)
