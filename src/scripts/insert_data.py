@@ -103,9 +103,27 @@ def generate_weather(schema_name, engine):
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
     df_weather = pd.read_parquet("./data/weather_conditions/weather_conditions.parquet")
+    df_session = pd.read_parquet("./data/sessions/sessions.parquet")
     df_weather = df_weather.drop(columns=["meeting_key"])
     df_weather = df_weather.drop_duplicates(subset=["session_key", "date"])
-    insert_data_to_db(df_weather, "weather", schema_name, engine)
+    df_weather = df_weather[df_weather["session_key"].isin(df_session["session_key"].to_list())]
+    df_weather["rainfall"] = df_weather["rainfall"].astype(bool)
+    
+    insert_data_to_db(df_weather, "weather_conditions", schema_name, engine)
+
+def generate_tyre_strits(schema_name, engine): 
+    """
+    Processes tyre_strits.
+
+    Args:
+        file_path (str): Path to the telemetry parquet file.
+        schema_name (str): Database schema name.
+    """
+    df_tyre_strints = pd.read_parquet("./data/stints/stints.parquet")
+    df_tyre_strints = df_tyre_strints.drop(columns=["meeting_key"])
+    df_tyre_strints = df_tyre_strints.drop_duplicates(subset=["session_key", "stint_number", "driver_number"])
+
+    insert_data_to_db(df_tyre_strints, "tyre_stints", schema_name, engine)
 
 def process_telemetry(file_path, schema_name):
     """
@@ -160,5 +178,6 @@ if __name__ == "__main__":
     generate_laps(schema_name, engine)
     generate_pits(schema_name, engine)
     generate_positions(schema_name, engine)
+    generate_tyre_strits(schema_name, engine)
     generate_weather(schema_name, engine)
     print("All data has been successfully inserted into the database.")
