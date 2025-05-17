@@ -173,14 +173,14 @@ def third_query(schema_name, engine) -> pd.DataFrame:
 
     return pd.read_sql(query, engine)
 
-def fourth_query(engine) -> pd.DataFrame:
+def fourth_query(schema_name, engine) -> pd.DataFrame:
     """
     Função que retorna a quarta query definida pelo grupo.
 
     Análise do impacto do DRS na velocidade do carro em cada setor da pista, para cada piloto e para cada pista.
     """
 
-    query = """
+    query = f"""
         WITH base AS (
             SELECT
                 T.session_key,
@@ -200,8 +200,8 @@ def fourth_query(engine) -> pd.DataFrame:
                 WHEN T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_1) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_2) THEN 'SETOR 2'
                 WHEN T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_2) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_3) THEN 'SETOR 3'
                 END AS setor
-            FROM telemetrys AS T 
-            JOIN laps AS L ON L.session_key = T.session_key AND L.driver_number = T.driver_number
+            FROM {schema_name}.telemetrys AS T 
+            JOIN {schema_name}.laps AS L ON L.session_key = T.session_key AND L.driver_number = T.driver_number
             WHERE 
                 ((T.date >= L.date_start AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_1)) OR
                 (T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_1) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_2)) OR
@@ -263,32 +263,32 @@ def fourth_query(engine) -> pd.DataFrame:
                 FROM com_grupo
                 WINDOW W AS (PARTITION BY group_id ORDER BY date RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
             ) AS T2 ON T1.session_key = T2.session_key AND T1.driver_number = T2.driver_number AND T1.usofreio = T2.usofreio AND T1.date = T2.date AND T1.drs = T2.drs AND T1.setor = T2.setor AND T1.group_id = T2.group_id
-            JOIN drivers AS D ON T1.session_key = D.session_key AND T1.driver_number = D.driver_number
-            JOIN sessions AS S ON S.session_key = T1.session_key
+            JOIN {schema_name}.drivers AS D ON T1.session_key = D.session_key AND T1.driver_number = D.driver_number
+            JOIN {schema_name}.sessions AS S ON S.session_key = T1.session_key
             GROUP BY S.circuit_short_name, D.full_name, T1.drs, T1.setor, T1.group_id, T1.VelocidadeInicio, T2.VelocidadeFim, T1.usofreio; 
     """
 
     return pd.read_sql(query, engine)
 
 
-def fifth_query(engine) -> pd.DataFrame:
+def fifth_query(schema_name, engine) -> pd.DataFrame:
     """
     Função que retorna a quinta query definida pelo grupo.
 
     Qual é a relação entre a temperatura média da pista em relação ao desempenho do carro em termos de velocidade média e uso médio do motor?
     """
 
-    query = """
+    query = f"""
     SELECT
         S.circuit_short_name AS NomeCircuito,
         D.full_name AS NomeDoPiloto, 
         AVG(T.speed)::NUMERIC(8,2) AS VelocidadeMediaPiloto,
         AVG(T.throttle)::NUMERIC(8,2) AS ConsumoPotenciaMediaMotor,
         AVG(WC.track_temperature)::NUMERIC(8,2) AS TemperaturaMediaPista
-    FROM telemetrys AS T
-    JOIN drivers AS D ON T.session_key = D.session_key AND T.driver_number = D.driver_number
-    JOIN weather_conditions AS WC ON WC.session_key = T.session_key
-    JOIN sessions AS S ON S.session_key = T.session_key
+    FROM {schema_name}.telemetrys AS T
+    JOIN {schema_name}.drivers AS D ON T.session_key = D.session_key AND T.driver_number = D.driver_number
+    JOIN {schema_name}.weather_conditions AS WC ON WC.session_key = T.session_key
+    JOIN {schema_name}.sessions AS S ON S.session_key = T.session_key
     WHERE T.session_key = 9998
     GROUP BY S.circuit_short_name, D.full_name;
     """
