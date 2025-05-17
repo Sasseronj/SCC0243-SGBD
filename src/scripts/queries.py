@@ -42,12 +42,12 @@ def first_query(schema_name, engine) -> pd.DataFrame:
         SELECT 
             tlm.session_key, 
             tlm.driver_number,
+            lap_duration,
             CASE 
                 WHEN tlm.date > laps.date_start AND tlm.date < laps.date_start + INTERVAL '1 second' * laps.duration_sector_1 THEN 'SECTOR 1'
                 WHEN tlm.date > (laps.date_start + INTERVAL '1 second' * laps.duration_sector_1) AND tlm.date < (laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2)) THEN 'SECTOR 2'
                 WHEN tlm.date > (laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2)) AND (tlm.date <= laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2 + laps.duration_sector_3)) THEN 'SECTOR 3'
             END AS sector,
-            MIN(laps.lap_duration) AS lap_duration,
             AVG(tlm.speed) AS max_speed
         FROM {schema_name}.telemetrys tlm
         JOIN (
@@ -70,7 +70,8 @@ def first_query(schema_name, engine) -> pd.DataFrame:
         ) laps
         ON tlm.session_key = laps.session_key AND tlm.driver_number = laps.driver_number
         AND tlm.date BETWEEN laps.date_start AND laps.date_start + (INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2 + laps.duration_sector_3))
-        GROUP BY tlm.session_key, tlm.driver_number, sector
+        GROUP BY tlm.session_key, tlm.driver_number, sector, lap_duration
+        HAVING lap_duration = MIN(lap_duration)
         ORDER BY tlm.session_key, tlm.driver_number, lap_duration, sector ASC;
     """
     
