@@ -1,7 +1,8 @@
 import sys
 from sqlalchemy import create_engine, text
+from dotenv import dotenv_values
 
-DATABASE_URL = "postgresql+psycopg2://postgresadmin:admin123@localhost:5000/postgresdb"
+DATABASE_URL = dotenv_values(".env.local")['DATABASE_URL']
 
 if __name__ == "__main__":
     schema_name = sys.argv[1]

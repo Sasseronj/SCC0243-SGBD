@@ -22,6 +22,32 @@ def get_data_from_table(schema_name: str, query: str, engine) -> pd.DataFrame:
 
     return table_data
 
+def get_all_drivers(schema_name: str, engine) -> pd.DataFrame:
+    """
+    Função que retorna todos os pilotos do banco de dados.
+
+    @params:
+        - schema_name: str
+        - engine
+    
+    @returns:
+        - table_data: pd.DataFrame
+    """
+
+    query = f"""
+        SELECT 
+            DISTINCT driver_number, 
+            full_name, 
+            country_code, 
+            team_name
+        FROM {schema_name}.drivers
+        WHERE full_name IS NOT NULL
+              AND country_code IS NOT NULL
+              AND team_name IS NOT NULL
+        ORDER BY driver_number ASC;
+    """
+
+    return pd.read_sql(query, engine)
 
 def first_query(schema_name, engine) -> pd.DataFrame:
     """
@@ -51,9 +77,10 @@ def first_query(schema_name, engine) -> pd.DataFrame:
             AVG(tlm.speed) AS max_speed
         FROM {schema_name}.telemetrys tlm
         JOIN (
-            SELECT DISTINCT ON (driver_number)
-                session_key,
+            SELECT 
+                DISTINCT ON (driver_number, session_key)
                 driver_number,
+                session_key,
                 lap_duration,
                 date_start,
                 duration_sector_1,
@@ -61,12 +88,11 @@ def first_query(schema_name, engine) -> pd.DataFrame:
                 duration_sector_3
             FROM {schema_name}.laps
             WHERE session_key in (
-                SELECT 
-                    session_key
-                FROM {schema_name}.sessions
+                SELECT session_key 
+                FROM {schema_name}.sessions 
                 WHERE session_name = 'Race'
             )
-            ORDER BY driver_number, lap_duration ASC
+            ORDER BY driver_number, session_key, lap_duration ASC
         ) laps
         ON tlm.session_key = laps.session_key AND tlm.driver_number = laps.driver_number
         AND tlm.date BETWEEN laps.date_start AND laps.date_start + (INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2 + laps.duration_sector_3))
@@ -78,7 +104,7 @@ def first_query(schema_name, engine) -> pd.DataFrame:
     return pd.read_sql(query, engine)
 
 
-def second_query(engine) -> pd.DataFrame:
+def second_query(schema_name, engine) -> pd.DataFrame:
     """
     Função que retorna a segunda query definida pelo grupo:
 
@@ -91,7 +117,7 @@ def second_query(engine) -> pd.DataFrame:
         - table_data: pd.DataFrame
     """
 
-    query = """
+    query = f"""
         SELECT DISTINCT
             T.driver_number,
             T.session_key,
@@ -110,7 +136,7 @@ def second_query(engine) -> pd.DataFrame:
                     WHEN EXTRACT (EPOCH FROM date - LAG(date, 1) OVER W) > 0 THEN ((speed - LAG(speed, 1) OVER W) / 3.6) / EXTRACT (EPOCH FROM date - LAG(date, 1) OVER W)
                     WHEN EXTRACT (EPOCH FROM date - LAG(date, 1) OVER W) = 0 THEN 0
                 END AS AceleracaoInstantanea
-            FROM telemetrys
+            FROM {schema_name}.telemetrys
             WHERE session_key = 9998
             WINDOW W AS (PARTITION BY driver_number ORDER BY date)
         ) AS T
@@ -121,7 +147,7 @@ def second_query(engine) -> pd.DataFrame:
 
     return pd.read_sql(query, engine)
 
-def third_query(engine) -> pd.DataFrame:
+def third_query(schema_name, engine) -> pd.DataFrame:
     """
     Função que retorna a terceira query definida pelo grupo:
 
@@ -134,13 +160,13 @@ def third_query(engine) -> pd.DataFrame:
         - table_data: pd.DataFrame
     """
 
-    query = """
+    query = f"""
         SELECT  
             TS.compound AS CompostoPneu,
             AVG(WC.track_temperature)::NUMERIC(8,2) AS TemperaturaMediaPista,
             MAX(TS.lap_end - TS.lap_start) AS MaxLapDurationTyre
-        FROM tyre_stints AS TS
-        INNER JOIN weather_conditions AS WC ON WC.session_key = TS.session_key
+        FROM {schema_name}.tyre_stints AS TS
+        INNER JOIN {schema_name}.weather_conditions AS WC ON WC.session_key = TS.session_key
         GROUP BY TS.compound
         ORDER BY MaxLapDurationTyre DESC;
     """
