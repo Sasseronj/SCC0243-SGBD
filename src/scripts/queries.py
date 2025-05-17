@@ -160,9 +160,22 @@ def fifth_query(engine) -> pd.DataFrame:
     """
     Função que retorna a quinta query definida pelo grupo.
 
-    Para cada corrida, cada piloto, obter a porcentagem média do uso do DRS e como isso está 
-    correlacionado com a temperatura do ar naquela corrida. Caso a temperatura varie consideravelmente, 
-    pegar a temperatura média da corrida.
+    Qual é a relação entre a temperatura média da pista em relação ao desempenho do carro em termos de velocidade média e uso médio do motor?
+    """
+
+    query = """
+    SELECT
+        S.circuit_short_name AS NomeCircuito,
+        D.full_name AS NomeDoPiloto, 
+        AVG(T.speed)::NUMERIC(8,2) AS VelocidadeMediaPiloto,
+        AVG(T.throttle)::NUMERIC(8,2) AS ConsumoPotenciaMediaMotor,
+        AVG(WC.track_temperature)::NUMERIC(8,2) AS TemperaturaMediaPista
+    FROM telemetrys AS T
+    JOIN drivers AS D ON T.session_key = D.session_key AND T.driver_number = D.driver_number
+    JOIN weather_conditions AS WC ON WC.session_key = T.session_key
+    JOIN sessions AS S ON S.session_key = T.session_key
+    WHERE T.session_key = 9998
+    GROUP BY S.circuit_short_name, D.full_name;
     """
 
 
