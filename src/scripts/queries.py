@@ -151,9 +151,7 @@ def fourth_query(engine) -> pd.DataFrame:
     """
     Função que retorna a quarta query definida pelo grupo.
 
-    Para cada corrida e para cada corredor, obter a maximização da porcentagem média
-    de consumo do carro antes do corredor parar em um pit-stop para todas as paradas de pit-stop
-    e também mostrar qual foi o número de voltas associado a essa porcentagem média máxima. 
+    Análise do impacto do DRS na velocidade do carro em cada setor da pista, para cada piloto e para cada pista.
     """
 
     query = """
@@ -163,6 +161,10 @@ def fourth_query(engine) -> pd.DataFrame:
                 T.driver_number,
                 T.date,
                 T.speed,
+                CASE 
+                    WHEN T.brake = 100 THEN 'FREANDO'
+                    ELSE 'NORMAL'
+                END AS UsoFreio,
                 CASE
                     WHEN T.drs IN (8, 10, 12, 14) THEN 'ATIVO'
                     ELSE 'NÃO ATIVO'
@@ -186,7 +188,8 @@ def fourth_query(engine) -> pd.DataFrame:
                         WHEN LAG(session_key) OVER W = session_key AND
                         LAG(driver_number) OVER W = driver_number AND
                         LAG(drs) OVER W = drs AND
-                        LAG(setor) OVER W = setor 
+                        LAG(setor) OVER W = setor AND
+                        LAG(usofreio) OVER W = usofreio
                         THEN 0 
                         ELSE 1
                     END AS mudou
@@ -205,7 +208,7 @@ def fourth_query(engine) -> pd.DataFrame:
                 MAX(T1.date) AS TempoFim,
                 T1.drs AS DRS,
                 T1.setor AS Setor,
-                -- T1.group_id,
+                T1.usofreio,
                 T1.VelocidadeInicio,
                 T2.VelocidadeFim
             FROM (
@@ -215,6 +218,7 @@ def fourth_query(engine) -> pd.DataFrame:
                     date,
                     drs,
                     setor,
+                    usofreio,
                     group_id,
                     FIRST_VALUE(speed) OVER W AS VelocidadeInicio
                 FROM com_grupo
@@ -227,14 +231,15 @@ def fourth_query(engine) -> pd.DataFrame:
                     date,
                     drs,
                     setor,
+                    usofreio,
                     group_id,
                     LAST_VALUE(speed) OVER W AS VelocidadeFim
                 FROM com_grupo
                 WINDOW W AS (PARTITION BY group_id ORDER BY date RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-            ) AS T2 ON T1.session_key = T2.session_key AND T1.driver_number = T2.driver_number AND T1.date = T2.date AND T1.drs = T2.drs AND T1.setor = T2.setor AND T1.group_id = T2.group_id
+            ) AS T2 ON T1.session_key = T2.session_key AND T1.driver_number = T2.driver_number AND T1.usofreio = T2.usofreio AND T1.date = T2.date AND T1.drs = T2.drs AND T1.setor = T2.setor AND T1.group_id = T2.group_id
             JOIN drivers AS D ON T1.session_key = D.session_key AND T1.driver_number = D.driver_number
             JOIN sessions AS S ON S.session_key = T1.session_key
-            GROUP BY S.circuit_short_name, D.full_name, T1.drs, T1.setor, T1.group_id, T1.VelocidadeInicio, T2.VelocidadeFim; 
+            GROUP BY S.circuit_short_name, D.full_name, T1.drs, T1.setor, T1.group_id, T1.VelocidadeInicio, T2.VelocidadeFim, T1.usofreio; 
     """
 
     return pd.read_sql(query, engine)
