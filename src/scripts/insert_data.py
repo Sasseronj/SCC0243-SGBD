@@ -3,8 +3,9 @@ import pandas as pd
 import os
 from sqlalchemy import create_engine
 from joblib import Parallel, delayed
+from dotenv import dotenv_values
 
-DATABASE_URL = "postgresql+psycopg2://postgresadmin:admin123@localhost:5000/postgresdb"
+DATABASE_URL = dotenv_values(".env.local")['DATABASE_URL']
 
 def insert_data_to_db(df, table_name, schema_name, engine, show=True):
     """
