@@ -1,2 +1,3 @@
 data
 .env.local
+**__pycache__**
