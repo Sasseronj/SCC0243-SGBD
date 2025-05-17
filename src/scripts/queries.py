@@ -156,6 +156,90 @@ def fourth_query(engine) -> pd.DataFrame:
     e também mostrar qual foi o número de voltas associado a essa porcentagem média máxima. 
     """
 
+    query = """
+        WITH base AS (
+            SELECT
+                T.session_key,
+                T.driver_number,
+                T.date,
+                T.speed,
+                CASE
+                    WHEN T.drs IN (8, 10, 12, 14) THEN 'ATIVO'
+                    ELSE 'NÃO ATIVO'
+                    END AS drs,
+                CASE
+                WHEN T.date >= L.date_start AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_1) THEN 'SETOR 1'
+                WHEN T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_1) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_2) THEN 'SETOR 2'
+                WHEN T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_2) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_3) THEN 'SETOR 3'
+                END AS setor
+            FROM telemetrys AS T 
+            JOIN laps AS L ON L.session_key = T.session_key AND L.driver_number = T.driver_number
+            WHERE 
+                ((T.date >= L.date_start AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_1)) OR
+                (T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_1) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_2)) OR
+                (T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_2) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_3))) AND T.session_key = 9998 AND T.driver_number = 30
+            WINDOW W AS (ORDER BY date)
+            ), com_setor AS (
+                SELECT
+                    *,
+                    CASE
+                        WHEN LAG(session_key) OVER W = session_key AND
+                        LAG(driver_number) OVER W = driver_number AND
+                        LAG(drs) OVER W = drs AND
+                        LAG(setor) OVER W = setor 
+                        THEN 0 
+                        ELSE 1
+                    END AS mudou
+                FROM base
+            WINDOW W AS (ORDER BY date)
+            ),com_grupo AS (
+                SELECT 
+                    *,
+                    SUM(mudou) OVER (PARTITION BY session_key, driver_number ORDER BY date) AS group_id
+                FROM com_setor
+            )
+            SELECT DISTINCT
+                S.circuit_short_name AS NomePista, 
+                D.full_name AS NomePiloto,
+                MIN(T1.date) AS TempoInicio,
+                MAX(T1.date) AS TempoFim,
+                T1.drs AS DRS,
+                T1.setor AS Setor,
+                -- T1.group_id,
+                T1.VelocidadeInicio,
+                T2.VelocidadeFim
+            FROM (
+                SELECT DISTINCT
+                    session_key,
+                    driver_number,
+                    date,
+                    drs,
+                    setor,
+                    group_id,
+                    FIRST_VALUE(speed) OVER W AS VelocidadeInicio
+                FROM com_grupo
+                WINDOW W AS (PARTITION BY group_id ORDER BY date)
+            ) AS T1
+            JOIN (
+                SELECT DISTINCT
+                    session_key,
+                    driver_number,
+                    date,
+                    drs,
+                    setor,
+                    group_id,
+                    LAST_VALUE(speed) OVER W AS VelocidadeFim
+                FROM com_grupo
+                WINDOW W AS (PARTITION BY group_id ORDER BY date RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+            ) AS T2 ON T1.session_key = T2.session_key AND T1.driver_number = T2.driver_number AND T1.date = T2.date AND T1.drs = T2.drs AND T1.setor = T2.setor AND T1.group_id = T2.group_id
+            JOIN drivers AS D ON T1.session_key = D.session_key AND T1.driver_number = D.driver_number
+            JOIN sessions AS S ON S.session_key = T1.session_key
+            GROUP BY S.circuit_short_name, D.full_name, T1.drs, T1.setor, T1.group_id, T1.VelocidadeInicio, T2.VelocidadeFim; 
+    """
+
+    return pd.read_sql(query, engine)
+
+
 def fifth_query(engine) -> pd.DataFrame:
     """
     Função que retorna a quinta query definida pelo grupo.
@@ -186,9 +270,9 @@ def main():
     engine = create_engine(DATABASE_URL)
  
     # df_second_result = second_query(engine)
-    df_fifth_result = fifth_query(engine)
+    df_fourth_result = fourth_query(engine)
 
-    print(df_fifth_result)
+    print(df_fourth_result)
 
 
 
