@@ -100,4 +100,4 @@ if __name__ == "__main__":
         dataframe, duration = execute_command(engine)
         print_dataframe(dataframe, duration)
         
-        input("\nPress a key to continue...")
+        input("\nPress Enter to continue...")
