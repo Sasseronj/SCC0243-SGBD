@@ -22,17 +22,17 @@ def print_header() -> None:
     Prints the application header and available query options.
     """
     header = "".join([
-        "--------------------------------------------------------------------------------------\n",
-        "------------------------------------- F1 Analisys ------------------------------------\n",
-        "--------------------------------------------------------------------------------------\n",
-        "1 - (Relatory) First query\n",
-        "2 - (Relatory) Second query\n",
-        "3 - (Relatory) Third query\n",
-        "4 - (Relatory) Fourth query\n",
-        "5 - (Relatory) Fifth query\n",
+        "----------------------------------------------------------------------------------------------------------\n",
+        "----------------------------------------------- F1 Analisys ----------------------------------------------\n",
+        "----------------------------------------------------------------------------------------------------------\n",
+        "1 - (Relatory) Average Speed Performance Analysis by Sector\n",
+        "2 - (Relatory) Acceleration Performance Analysis by Sector\n",
+        "3 - (Relatory) Tire Performance Analysis in Relation to Track Temperature\n",
+        "4 - (Relatory) Impact Analysis of DRS on Car Speed in Each Track Sector\n",
+        "5 - (Relatory) Analysis of the Relationship Between Average Track Temperature, Car Speed, and Engine Usage\n",
         "6 - List all drivers\n",
         "0 - Exit\n",
-        "--------------------------------------------------------------------------------------\n"
+        "----------------------------------------------------------------------------------------------------------\n"
     ]) 
     
     print(header)
@@ -86,18 +86,30 @@ def print_dataframe(dataframe, duration) -> None:
     print(f"Sample of the data: {dataframe.shape}")
     print(f"Query executed in {duration:.2f} seconds\n")
     print(tabulate(dataframe.head(20), headers='keys', tablefmt='grid', showindex=False))
-
+    
+    print("\nSaving the data to relatory.csv...")
+    dataframe.to_csv("relatory.csv", index=False)
+    
 
 if __name__ == "__main__":
     # Create a database engine
     engine = create_engine(DATABASE_URL)
     
     # Application main loop
-    while True:
-        os.system('clear')  # Clear terminal screen (Linux/macOS)
+    try:
+        while True:
+            os.system('clear')  # Clear terminal screen (Linux/macOS)
 
-        print_header()
-        dataframe, duration = execute_command(engine)
-        print_dataframe(dataframe, duration)
-        
-        input("\nPress Enter to continue...")
+            print_header()
+            dataframe, duration = execute_command(engine)
+            print_dataframe(dataframe, duration)
+            
+            input("\nPress Enter to continue...")
+    except KeyboardInterrupt:
+        print("\nExiting the application.\n")
+    except Exception as e:
+        print(f"An error occurred: {e}\n")
+    finally:
+        if os.path.exists("relatory.csv"):
+            print("Cleaning up...")
+            os.remove("relatory.csv")
