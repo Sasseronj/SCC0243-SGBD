@@ -1,2 +1,9 @@
 data
 .env.local
+
+data.zip
+stderr.out
+stdout.out
+
+.venv
+.python-version
