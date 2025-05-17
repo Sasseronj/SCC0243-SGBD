@@ -1,3 +1,10 @@
 data
 .env.local
 **__pycache__**
+
+data.zip
+stderr.out
+stdout.out
+
+.venv
+.python-version
