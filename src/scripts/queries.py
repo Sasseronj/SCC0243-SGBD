@@ -178,15 +178,17 @@ def fifth_query(engine) -> pd.DataFrame:
     GROUP BY S.circuit_short_name, D.full_name;
     """
 
+    return pd.read_sql(query, engine)
+
 
 def main():
     schema_name = input("Digite aqui o nome do schema: ")
     engine = create_engine(DATABASE_URL)
  
     # df_second_result = second_query(engine)
-    df_third_result = third_query(engine)
+    df_fifth_result = fifth_query(engine)
 
-    print(df_third_result)
+    print(df_fifth_result)
 
 
 
