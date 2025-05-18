@@ -65,40 +65,55 @@ def first_query(schema_name, engine) -> pd.DataFrame:
     """
 
     query = f"""
-        SELECT 
-            tlm.session_key, 
-            tlm.driver_number,
-            lap_duration,
-            CASE 
-                WHEN tlm.date > laps.date_start AND tlm.date < laps.date_start + INTERVAL '1 second' * laps.duration_sector_1 THEN 'SECTOR 1'
-                WHEN tlm.date > (laps.date_start + INTERVAL '1 second' * laps.duration_sector_1) AND tlm.date < (laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2)) THEN 'SECTOR 2'
-                WHEN tlm.date > (laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2)) AND (tlm.date <= laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2 + laps.duration_sector_3)) THEN 'SECTOR 3'
-            END AS sector,
-            AVG(tlm.speed) AS max_speed
-        FROM {schema_name}.telemetrys tlm
-        JOIN (
-            SELECT 
-                DISTINCT ON (driver_number, session_key)
-                driver_number,
+        WITH race_laps AS (
+            SELECT
                 session_key,
-                lap_duration,
+                driver_number,
+                lap_number,
                 date_start,
+                lap_duration,
                 duration_sector_1,
                 duration_sector_2,
-                duration_sector_3
-            FROM {schema_name}.laps
+                duration_sector_3,
+                ROW_NUMBER() OVER (PARTITION BY session_key, driver_number ORDER BY lap_duration ASC) AS rank_lap
+            FROM raw.laps
             WHERE session_key in (
                 SELECT session_key 
-                FROM {schema_name}.sessions 
+                FROM raw.sessions 
                 WHERE session_name = 'Race'
             )
-            ORDER BY driver_number, session_key, lap_duration ASC
-        ) laps
-        ON tlm.session_key = laps.session_key AND tlm.driver_number = laps.driver_number
-        AND tlm.date BETWEEN laps.date_start AND laps.date_start + (INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2 + laps.duration_sector_3))
-        GROUP BY tlm.session_key, tlm.driver_number, sector, lap_duration
-        HAVING lap_duration = MIN(lap_duration)
-        ORDER BY tlm.session_key, tlm.driver_number, lap_duration, sector ASC;
+            AND lap_number IS NOT NULL	
+        ),
+        best_laps AS (
+            SELECT *
+            FROM race_laps
+            WHERE rank_lap = 1
+        ),
+        filtred_telemetrys AS (
+            SELECT 
+                BL.*, 
+                TLM.date,
+                TLM.speed
+            FROM raw.telemetrys TLM
+            JOIN best_laps BL ON TLM.session_key = BL.session_key AND TLM.driver_number = BL.driver_number
+            WHERE TLM.date BETWEEN BL.date_start AND BL.date_start + (INTERVAL '1 second' * (BL.duration_sector_1 + BL.duration_sector_2 + BL.duration_sector_3))
+        ),
+        avg_speed_per_sector AS (
+            SELECT 
+                session_key, 
+                driver_number,
+                MIN(lap_duration) AS best_lap_duration,
+                CASE 
+                    WHEN date > date_start AND date < date_start + INTERVAL '1 second' * duration_sector_1 THEN 'SECTOR 1'
+                    WHEN date > (date_start + INTERVAL '1 second' * duration_sector_1) AND date < (date_start + INTERVAL '1 second' * (duration_sector_1 + duration_sector_2)) THEN 'SECTOR 2'
+                    WHEN date > (date_start + INTERVAL '1 second' * (duration_sector_1 + duration_sector_2)) AND (date <= date_start + INTERVAL '1 second' * (duration_sector_1 + duration_sector_2 + duration_sector_3)) THEN 'SECTOR 3'
+                END AS sector,
+                AVG(speed) AS max_speed
+            FROM filtred_telemetrys
+            GROUP BY session_key, driver_number, sector
+        )
+        SELECT *
+        FROM avg_speed_per_sector
     """
     
     return pd.read_sql(query, engine)
