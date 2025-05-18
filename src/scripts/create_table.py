@@ -113,8 +113,7 @@ if __name__ == "__main__":
             pit_duration FLOAT,
             PRIMARY KEY (session_key, driver_number, lap_number),
             FOREIGN KEY (session_key) REFERENCES {schema_name}.sessions (session_key),
-            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key),
-            FOREIGN KEY (driver_number, session_key, lap_number) REFERENCES {schema_name}.laps (driver_number, session_key, lap_number)
+            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key)
         );
 
         CREATE TABLE {schema_name}.positions (
