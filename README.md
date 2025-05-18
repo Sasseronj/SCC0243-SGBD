@@ -11,25 +11,17 @@ Este projeto foi desenvolvido com suporte ao PostgreSQL utilizando Docker e scri
 Antes de qualquer coisa, é necessário iniciar o banco de dados PostgreSQL via Docker. Para isso, execute o seguintes comandos no terminal:
 
 ```bash
-mkdir ./docker/postgres/pgdata
 docker compose -f ./docker/docker_postgres.yml up -d --build
 ```
 
-Esse comando irá construir e levantar um container com o PostgreSQL configurado, com os dados armazenados em:
+### 🔗 2. Dados
 
-```
-./docker/postgres/pgdata
-```
+Após subir o container, faça o dowload dos arquivos do link abaixo:
 
-### 🔗 2. String de Conexão
+* [Diagrama do Banco de Dados](https://dbdiagram.io/d/F1-67eb2f944f7afba184debe16)
+* [Dowload Dados](https://drive.google.com/drive/folders/1tsCWEG-hNj0NPa4YSlPwqRQf4fsH4Xpm?usp=drive_link)
 
-Após subir o container, a aplicação poderá se conectar ao banco utilizando a seguinte string de conexão SQLAlchemy:
-
-```
-postgresql+psycopg2://postgresadmin:admin123@localhost:5000/postgresdb
-```
-
-> Certifique-se de que a porta `5000` está disponível no seu sistema.
+> Certifique-se de que os dados estejam numa pasta `data` no diretório raíz do repositório.
 
 ### 🗂 3. Criação das Tabelas
 
@@ -37,11 +29,6 @@ No diretório `src/scripts/` você encontrará os scripts responsáveis por estr
 
 - `create_table.py`: cria as tabelas de acordo com o modelo relacional.
 - `insert_data.py`: insere os dados nas tabelas criadas.
-
-O esquema das tabelas segue o modelo descrito neste diagrama e os dados obtidos no drive:  
-* [Diagrama do Banco de Dados](https://dbdiagram.io/d/F1-67eb2f944f7afba184debe16)
-* [Dados](https://drive.google.com/drive/folders/1tsCWEG-hNj0NPa4YSlPwqRQf4fsH4Xpm?usp=drive_link)
-
 
 Para executar um dos scripts, utilize os seguintes comandos:
 
@@ -52,8 +39,10 @@ python3 src/scripts/insert_data.py <schema>
 
 Substitua `<schema>` pelo nome do schema que deseja utilizar no banco de dados.
 
-### 📓 4. Notebooks
+### 📓 4. App
 
-O diretório `notebooks/` contém notebooks úteis para extração de dados via API, como:
+Por fim execute a aplicação:
 
-- `extract_api.ipynb`: exemplo de uso para obter dados externos que podem ser carregados no banco posteriormente.
+```
+python3 app.py
+```
