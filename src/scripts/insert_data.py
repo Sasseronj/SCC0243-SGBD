@@ -65,7 +65,6 @@ def generate_laps(schema_name, engine):
     """
     df_laps = pd.read_parquet("./data/laps/laps.parquet")
     df_laps = df_laps.drop(columns=["meeting_key"])
-    df_laps = df_laps[~df_laps["driver_number"].isin([31])]
     df_laps = df_laps.drop(columns=["segments_sector_1", "segments_sector_2", "segments_sector_3"])
 
     insert_data_to_db(df_laps, "laps", schema_name, engine)
@@ -126,6 +125,19 @@ def generate_tyre_strits(schema_name, engine):
 
     insert_data_to_db(df_tyre_strints, "tyre_stints", schema_name, engine)
 
+def generate_telemetrys_laps(schema_name, engine):
+    """
+    Processes telemetry_laps data.
+
+    Args:
+        schema_name (str): Database schema name.
+    """
+    df_telemetrys_laps = pd.read_parquet("./data/laps/laps.parquet")
+    df_telemetrys_laps = df_telemetrys_laps[["session_key", "driver_number"]]
+    df_telemetrys_laps = df_telemetrys_laps.drop_duplicates(subset=["session_key", "driver_number"])
+
+    insert_data_to_db(df_telemetrys_laps, "telemetrys_laps", schema_name, engine)
+
 def process_telemetry(file_path, schema_name):
     """
     Processes a single telemetry file and inserts it into the database.
@@ -148,7 +160,7 @@ def process_telemetry(file_path, schema_name):
         insert_data_to_db(df_telemetry, "telemetrys", schema_name, engine, show=False)
 
     except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+        pass
 
 def generate_telemetrys(schema_name):
     """
@@ -175,6 +187,7 @@ if __name__ == "__main__":
     generate_meets(schema_name, engine)
     generate_sessions(schema_name, engine)
     generate_drivers(schema_name, engine)
+    generate_telemetrys_laps(schema_name, engine)
     generate_telemetrys(schema_name)
     generate_laps(schema_name, engine)
     generate_pits(schema_name, engine)

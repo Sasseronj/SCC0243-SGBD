@@ -15,13 +15,14 @@ if __name__ == "__main__":
         DROP TABLE IF EXISTS {schema_name}.pits;
         DROP TABLE IF EXISTS {schema_name}.laps;
         DROP TABLE IF EXISTS {schema_name}.telemetrys;
+        DROP TABLE IF EXISTS {schema_name}.telemetrys_laps;
         DROP TABLE IF EXISTS {schema_name}.sessions;
         DROP TABLE IF EXISTS {schema_name}.meetings;
         DROP TABLE IF EXISTS {schema_name}.drivers;
         
         CREATE SCHEMA IF NOT EXISTS {schema_name};
         
-        CREATE TABLE IF NOT EXISTS {schema_name}.drivers (
+        CREATE TABLE {schema_name}.drivers (
             driver_number INT,
             session_key INT,
             broadcast_name VARCHAR,
@@ -71,6 +72,12 @@ if __name__ == "__main__":
             PRIMARY KEY (session_key),
             FOREIGN KEY (meeting_key) REFERENCES {schema_name}.meetings (meeting_key)
         );
+        
+        CREATE TABLE {schema_name}.telemetrys_laps (
+            driver_number INT,
+            session_key INT,
+            PRIMARY KEY (driver_number, session_key)
+        );
 
         CREATE TABLE {schema_name}.telemetrys (
             session_key INT,
@@ -84,12 +91,14 @@ if __name__ == "__main__":
             throttle FLOAT,
             PRIMARY KEY (session_key, driver_number, date),
             FOREIGN KEY (session_key) REFERENCES {schema_name}.sessions (session_key),
-            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key)
+            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key),
+            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.telemetrys_laps (driver_number, session_key)
         );
-
+        
         CREATE TABLE {schema_name}.laps (
             session_key INT,
             driver_number INT,
+            lap_number INT,
             date_start TIMESTAMP,
             duration_sector_1 FLOAT,
             duration_sector_2 FLOAT,
@@ -98,22 +107,24 @@ if __name__ == "__main__":
             i2_speed FLOAT,
             is_pit_out_lap BOOLEAN,
             lap_duration FLOAT,
-            lap_number INT,
             st_speed FLOAT,
             PRIMARY KEY (session_key, driver_number, lap_number),
             FOREIGN KEY (session_key) REFERENCES {schema_name}.sessions (session_key),
+            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.telemetrys_laps (driver_number, session_key),
             FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key)
         );
-
+        
         CREATE TABLE {schema_name}.pits (
             session_key INT,
             driver_number INT,
-            date TIMESTAMP,
             lap_number INT,
+            date TIMESTAMP,
             pit_duration FLOAT,
             PRIMARY KEY (session_key, driver_number, lap_number),
             FOREIGN KEY (session_key) REFERENCES {schema_name}.sessions (session_key),
-            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key)
+            FOREIGN KEY (driver_number, session_key) REFERENCES {schema_name}.drivers (driver_number, session_key),
+            FOREIGN KEY (driver_number, session_key, lap_number) REFERENCES {schema_name}.laps (driver_number, session_key, lap_number)
+            
         );
 
         CREATE TABLE {schema_name}.positions (

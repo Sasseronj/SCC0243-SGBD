@@ -75,7 +75,9 @@ def first_query(schema_name, engine) -> pd.DataFrame:
                 WHEN tlm.date > (laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2)) AND (tlm.date <= laps.date_start + INTERVAL '1 second' * (laps.duration_sector_1 + laps.duration_sector_2 + laps.duration_sector_3)) THEN 'SECTOR 3'
             END AS sector,
             AVG(tlm.speed) AS max_speed
-        FROM raw.telemetrys tlm
+        FROM {schema_name}.telemetrys tlm
+        JOIN {schema_name}.telemetrys_laps tl
+        ON tlm.session_key = tl.session_key AND tlm.driver_number = tl.driver_number
         JOIN (
             SELECT 
                 DISTINCT ON (driver_number, session_key)
@@ -86,10 +88,10 @@ def first_query(schema_name, engine) -> pd.DataFrame:
                 duration_sector_1,
                 duration_sector_2,
                 duration_sector_3
-            FROM raw.laps
+            FROM {schema_name}.laps
             WHERE session_key in (
                 SELECT session_key 
-                FROM raw.sessions
+                FROM {schema_name}.sessions
                 WHERE session_name = 'Race'
             )
         ) laps
@@ -138,7 +140,8 @@ def second_query(schema_name, engine) -> pd.DataFrame:
             WHERE session_key = 9998
             WINDOW W AS (PARTITION BY driver_number ORDER BY date)
         ) AS T
-        INNER JOIN laps AS L ON L.session_key = T.session_key AND L.driver_number = T.driver_number
+        INNER JOIN {schema_name}.telemetrys_laps AS TL ON TL.session_key = T.session_key AND TL.driver_number = T.driver_number
+        INNER JOIN {schema_name}.laps AS L ON L.session_key = T.session_key AND L.driver_number = T.driver_number
         GROUP BY T.driver_number, T.session_key, Sector
         ORDER BY AceleracaoMediaPorSetor DESC, T.driver_number ASC;
     """
@@ -199,6 +202,7 @@ def fourth_query(schema_name, engine) -> pd.DataFrame:
                 WHEN T.date > (L.date_start + INTERVAL '1 second' * L.duration_sector_2) AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_3) THEN 'SETOR 3'
                 END AS setor
             FROM {schema_name}.telemetrys AS T 
+            JOIN {schema_name}.telemetrys_laps AS TL ON TL.session_key = T.session_key AND TL.driver_number = T.driver_number
             JOIN {schema_name}.laps AS L ON L.session_key = T.session_key AND L.driver_number = T.driver_number
             WHERE 
                 ((T.date >= L.date_start AND T.date <= (L.date_start + INTERVAL '1 second' * L.duration_sector_1)) OR
