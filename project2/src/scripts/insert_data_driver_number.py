@@ -28,13 +28,13 @@ def insert_tyre_strints():
         try:
             point = (
                 Point("tyre_stints")
-                .tag("driver_number", str(row["driver_number"]))
                 .tag("session_key", str(row["session_key"]))
+                .tag("driver_number", str(row["driver_number"]))
                 .tag("compound", str(row["compound"]))
                 .field("stint_number", int(row["stint_number"]))
                 .field("tyre_age_at_start", float(row["tyre_age_at_start"]))
-                .field("lap_start", int(row["tyre_age_at_start"]))
-                .field("lap_end", int(row["tyre_age_at_start"]))
+                .field("lap_start", int(row["lap_start"]))
+                .field("lap_end", int(row["lap_end"]))
                 .time(pd.Timestamp.utcnow(), WritePrecision.NS)
             )
             write_api.write(bucket=bucket, org=org, record=point)
