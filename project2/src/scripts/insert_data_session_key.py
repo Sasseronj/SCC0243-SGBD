@@ -89,7 +89,7 @@ def insert_meets():
         write_api.write(bucket=bucket, org=org, record=p)
 
 def inset_laps()
-    df_laps = pd.read_parquet("../../data/laps/laps.parquet").dropna()
+    df_laps = pd.read_parquet("./data/laps/laps.parquet").dropna()
     df_laps = df_laps.drop(columns=["meeting_key"])
     df_laps = df_laps.drop(columns=["segments_sector_1", "segments_sector_2", "segments_sector_3"])
 
@@ -111,7 +111,7 @@ def inset_laps()
             .field("lap_number", int(row["lap_number"]))
             .time(row["date_start"], WritePrecision.NS)
         )
-    write_api.write(bucket=bucket, org=org, record=point)
+        write_api.write(bucket=bucket, org=org, record=point)
 
 def insert_sessions():
     df_sessions = pd.read_parquet("./data/sessions/sessions.parquet").dropna()
@@ -241,6 +241,7 @@ if __name__ == "__main__":
     insert_drivers()
     insert_pits()
     insert_positions()
+    insert_laps()
     insert_telemetrys()
 
     client.close()
