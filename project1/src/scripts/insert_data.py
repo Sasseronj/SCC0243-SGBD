@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from joblib import Parallel, delayed
 from dotenv import dotenv_values
 
-DATABASE_URL = dotenv_values("../../env.local")['DATABASE_URL']
+DATABASE_URL = "postgresql+psycopg2://postgresadmin:admin123@localhost:5000/postgresdb"
 
 def insert_data_to_db(df, table_name, schema_name, engine, show=True):
     """
@@ -29,7 +29,7 @@ def generate_meets(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_meets = pd.read_parquet("../../data/meetings/meetings.parquet")
+    df_meets = pd.read_parquet("./data/meetings/meetings.parquet")
     insert_data_to_db(df_meets, "meetings", schema_name, engine)
 
 def generate_sessions(schema_name, engine):
@@ -40,7 +40,7 @@ def generate_sessions(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_sessions = pd.read_parquet("../../data/sessions/sessions.parquet")
+    df_sessions = pd.read_parquet("./data/sessions/sessions.parquet")
     insert_data_to_db(df_sessions, "sessions", schema_name, engine)
 
 def generate_drivers(schema_name, engine):
@@ -51,7 +51,7 @@ def generate_drivers(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_drivers = pd.read_parquet("../../data/drivers/drivers.parquet")
+    df_drivers = pd.read_parquet("./data/drivers/drivers.parquet")
     df_drivers = df_drivers.drop(columns=["meeting_key"])
     insert_data_to_db(df_drivers, "drivers", schema_name, engine)
 
@@ -63,7 +63,7 @@ def generate_laps(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_laps = pd.read_parquet("../../data/laps/laps.parquet")
+    df_laps = pd.read_parquet("./data/laps/laps.parquet")
     df_laps = df_laps.drop(columns=["meeting_key"])
     df_laps = df_laps.drop(columns=["segments_sector_1", "segments_sector_2", "segments_sector_3"])
 
@@ -77,7 +77,7 @@ def generate_pits(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_pits = pd.read_parquet("../../data/pits/pits.parquet")
+    df_pits = pd.read_parquet("./data/pits/pits.parquet")
     df_pits = df_pits.drop(columns=["meeting_key"])
     insert_data_to_db(df_pits, "pits", schema_name, engine)
 
@@ -89,7 +89,7 @@ def generate_positions(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_positions = pd.read_parquet("../../data/positions/positions.parquet")
+    df_positions = pd.read_parquet("./data/positions/positions.parquet")
     df_positions = df_positions.drop(columns=["meeting_key"])
     df_positions = df_positions.drop_duplicates(subset=["session_key", "driver_number", "date"])
     insert_data_to_db(df_positions, "positions", schema_name, engine)
@@ -102,8 +102,8 @@ def generate_weather(schema_name, engine):
         schema_name (str): Database schema name.
         engine (sqlalchemy.engine.Engine): SQLAlchemy engine.
     """
-    df_weather = pd.read_parquet("../../data/weather_conditions/weather_conditions.parquet")
-    df_session = pd.read_parquet("../../data/sessions/sessions.parquet")
+    df_weather = pd.read_parquet("./data/weather_conditions/weather_conditions.parquet")
+    df_session = pd.read_parquet("./data/sessions/sessions.parquet")
     df_weather = df_weather.drop(columns=["meeting_key"])
     df_weather = df_weather.drop_duplicates(subset=["session_key", "date"])
     df_weather = df_weather[df_weather["session_key"].isin(df_session["session_key"].to_list())]
@@ -119,7 +119,7 @@ def generate_tyre_strits(schema_name, engine):
         file_path (str): Path to the telemetry parquet file.
         schema_name (str): Database schema name.
     """
-    df_tyre_strints = pd.read_parquet("../../data/stints/stints.parquet")
+    df_tyre_strints = pd.read_parquet("./data/stints/stints.parquet")
     df_tyre_strints = df_tyre_strints.drop(columns=["meeting_key"])
     df_tyre_strints = df_tyre_strints.drop_duplicates(subset=["session_key", "stint_number", "driver_number"])
 
@@ -132,7 +132,7 @@ def generate_telemetrys_laps(schema_name, engine):
     Args:
         schema_name (str): Database schema name.
     """
-    df_telemetrys_laps = pd.read_parquet("../../data/laps/laps.parquet")
+    df_telemetrys_laps = pd.read_parquet("./data/laps/laps.parquet")
     df_telemetrys_laps = df_telemetrys_laps[["session_key", "driver_number"]]
     df_telemetrys_laps = df_telemetrys_laps.drop_duplicates(subset=["session_key", "driver_number"])
 
@@ -169,7 +169,7 @@ def generate_telemetrys(schema_name):
     Args:
         schema_name (str): Database schema name.
     """
-    path_telemetrys = "../../data/telemetrys"
+    path_telemetrys = "./data/telemetrys"
     if not os.path.isdir(path_telemetrys):
         raise FileNotFoundError(f"Directory does not exist: {path_telemetrys}")
 
@@ -181,9 +181,11 @@ def generate_telemetrys(schema_name):
     )
 
 if __name__ == "__main__":
+    import time
     schema_name = sys.argv[1]
     engine = create_engine(DATABASE_URL)
 
+    start = time.time()
     generate_meets(schema_name, engine)
     generate_sessions(schema_name, engine)
     generate_drivers(schema_name, engine)
@@ -194,4 +196,7 @@ if __name__ == "__main__":
     generate_positions(schema_name, engine)
     generate_tyre_strits(schema_name, engine)
     generate_weather(schema_name, engine)
+    end = time.time()
+
+    print(f"Data insertion completed in {end - start:.2f} seconds.")
     print("All data has been successfully inserted into the database.")

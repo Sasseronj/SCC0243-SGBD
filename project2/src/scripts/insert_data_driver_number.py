@@ -88,7 +88,7 @@ def insert_meets():
         )
         write_api.write(bucket=bucket, org=org, record=p)
 
-def inset_laps()
+def inset_laps():
     df_laps = pd.read_parquet("./data/laps/laps.parquet").dropna()
     df_laps = df_laps.drop(columns=["meeting_key"])
     df_laps = df_laps.drop(columns=["segments_sector_1", "segments_sector_2", "segments_sector_3"])
@@ -100,7 +100,7 @@ def inset_laps()
             Point("laps")
             .tag("driver_number", str(row["driver_number"]))
             .tag("session_key", str(row["session_key"]))
-            .tag("is_pit_out_lap", str(row["is_pit_out_lap"]))
+            .field("is_pit_out_lap", str(row["is_pit_out_lap"]))
             .field("i1_speed", float(row["i1_speed"]))
             .field("i2_speed", float(row["i2_speed"]))
             .field("st_speed", float(row["st_speed"]))
